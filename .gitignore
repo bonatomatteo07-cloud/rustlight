@@ -1,0 +1,28 @@
+# Unity (project lives in UnityProject/)
+UnityProject/[Ll]ibrary/
+UnityProject/[Tt]emp/
+UnityProject/[Oo]bj/
+UnityProject/[Bb]uild/
+UnityProject/[Bb]uilds/
+UnityProject/[Ll]ogs/
+UnityProject/[Uu]ser[Ss]ettings/
+UnityProject/[Mm]emoryCaptures/
+UnityProject/*.csproj
+UnityProject/*.sln
+UnityProject/*.slnx
+UnityProject/*.user
+UnityProject/.vs/
+UnityProject/.idea/
+UnityProject/Assets/Plugins/Editor/JetBrains*
+*.apk
+*.aab
+*.ipa
+crashlytics-build.properties
+
+# .NET tests
+tests/**/bin/
+tests/**/obj/
+
+# OS
+.DS_Store
+Thumbs.db
