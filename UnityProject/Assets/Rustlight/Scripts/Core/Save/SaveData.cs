@@ -6,12 +6,20 @@ using Rustlight.Core.Quests;
 
 namespace Rustlight.Core.Save
 {
-    /// <summary>Both currencies: Scrap is earned in play, Cores are premium (bought or rare drops).</summary>
+    /// <summary>Both currencies, both earned in play: Scrap is common, Cores are rare (bosses, quests, crystals).</summary>
     [Serializable]
     public sealed class WalletData
     {
         public long scrap;
         public long cores;
+    }
+
+    /// <summary>Running totals that achievements are checked against.</summary>
+    [Serializable]
+    public sealed class LifetimeStats
+    {
+        public int kills;
+        public long scrapEarned;
     }
 
     /// <summary>
@@ -28,14 +36,13 @@ namespace Rustlight.Core.Save
         public PlayerProgress progress = new PlayerProgress();
         public WalletData wallet = new WalletData();
         public List<ItemStack> inventory = new List<ItemStack>();
-        public int inventoryCapacity = DefaultInventoryCapacity;
         public List<EquippedEntry> equipped = new List<EquippedEntry>();
         public List<string> ownedCosmetics = new List<string>();
         public string activeSuit = "";
         public string activeDrone = "";
-        public List<string> entitlements = new List<string>();
-        public List<string> processedTransactions = new List<string>();
         public List<QuestProgress> quests = new List<QuestProgress>();
+        public LifetimeStats lifetime = new LifetimeStats();
+        public List<string> unlockedAchievements = new List<string>();
         public string currentZone = "bunker";
 
         public static SaveData CreateNew() => new SaveData();
@@ -60,15 +67,13 @@ namespace Rustlight.Core.Save
             data.wallet ??= new WalletData();
             data.inventory ??= new List<ItemStack>();
             data.inventory.RemoveAll(s => s == null || string.IsNullOrEmpty(s.itemId) || s.count <= 0);
-            if (data.inventoryCapacity < SaveData.DefaultInventoryCapacity)
-                data.inventoryCapacity = SaveData.DefaultInventoryCapacity;
             data.equipped ??= new List<EquippedEntry>();
             data.ownedCosmetics ??= new List<string>();
             data.activeSuit ??= "";
             data.activeDrone ??= "";
-            data.entitlements ??= new List<string>();
-            data.processedTransactions ??= new List<string>();
             data.quests ??= new List<QuestProgress>();
+            data.lifetime ??= new LifetimeStats();
+            data.unlockedAchievements ??= new List<string>();
             if (string.IsNullOrEmpty(data.currentZone)) data.currentZone = "bunker";
             data.version = SaveData.CurrentVersion;
             return data;

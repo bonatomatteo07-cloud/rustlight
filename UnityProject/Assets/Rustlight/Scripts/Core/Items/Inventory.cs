@@ -32,10 +32,14 @@ namespace Rustlight.Core.Items
             Capacity = capacity;
         }
 
-        public void ExpandCapacity(int extraSlots)
+        /// <summary>
+        /// Changes the slot count (e.g. when a DLC is installed or removed). Shrinking never deletes items:
+        /// the bag is simply over capacity and accepts no new stacks until space frees up.
+        /// </summary>
+        public void SetCapacity(int capacity)
         {
-            if (extraSlots <= 0) return;
-            Capacity += extraSlots;
+            if (capacity == Capacity) return;
+            Capacity = capacity < 0 ? 0 : capacity;
             Changed?.Invoke();
         }
 

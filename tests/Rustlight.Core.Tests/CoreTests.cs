@@ -2,7 +2,9 @@ using System.Text.Json;
 using Rustlight.Core;
 using Rustlight.Core.Combat;
 using Rustlight.Core.Items;
-using Rustlight.Core.Monetization;
+using System.Collections.Generic;
+using Rustlight.Core.Dlc;
+using Rustlight.Core.Settings;
 using Rustlight.Core.Progression;
 using Rustlight.Core.Quests;
 using Rustlight.Core.Save;
@@ -131,47 +133,103 @@ public class InventoryTests
     }
 }
 
-public class PurchaseTests
+public class FakeDlc : IDlcOwnership
+{
+    public readonly HashSet<string> Owned = new HashSet<string>();
+    public bool Owns(DlcDefinition dlc) => Owned.Contains(dlc.Id);
+}
+
+public class DlcTests
 {
     [Fact]
-    public void ConsumableGrantedOncePerTransaction()
+    public void OwnedDlcUnlocksCosmeticsSlotsAndZones()
     {
-        var g = new GameState(SaveData.CreateNew());
-        Assert.Equal(GrantResult.Granted, g.Purchases.Grant(StoreCatalog.CoresSmall, "tx1"));
-        Assert.Equal(GrantResult.AlreadyGranted, g.Purchases.Grant(StoreCatalog.CoresSmall, "tx1"));
-        Assert.Equal(GrantResult.Granted, g.Purchases.Grant(StoreCatalog.CoresSmall, "tx2"));
-        Assert.Equal(200, g.Wallet.Cores);
+        var dlc = new FakeDlc();
+        dlc.Owned.Add(DlcCatalog.SupporterPack.Id);
+        var g = new GameState(SaveData.CreateNew(), dlc);
+        Assert.True(g.Cosmetics.Owns("suit_vanguard"));
+        Assert.Equal(SaveData.DefaultInventoryCapacity + 10, g.Inventory.Capacity);
+        Assert.False(g.Entitlements.IsZoneUnlocked("zone_sunken_city"));
+        Assert.True(g.Entitlements.IsZoneUnlocked("zone_scrapyard")); // base game
     }
 
     [Fact]
-    public void NonConsumableRestoreDoesNotPayTwice()
+    public void RefundRemovesUnlocksWithoutTouchingTheSave()
+    {
+        var dlc = new FakeDlc();
+        dlc.Owned.Add(DlcCatalog.SupporterPack.Id);
+        var g = new GameState(SaveData.CreateNew(), dlc);
+        Assert.True(g.Cosmetics.TryWear("suit_vanguard"));
+
+        dlc.Owned.Clear();
+        g.Entitlements.Refresh();
+        Assert.False(g.Cosmetics.Owns("suit_vanguard"));
+        Assert.Equal(GameState.DefaultSuit, g.Save.activeSuit);
+        Assert.Equal(SaveData.DefaultInventoryCapacity, g.Inventory.Capacity);
+        Assert.DoesNotContain("suit_vanguard", g.Save.ownedCosmetics);
+    }
+
+    [Fact]
+    public void ShrunkInventoryKeepsItemsButRefusesNewStacks()
+    {
+        var dlc = new FakeDlc();
+        dlc.Owned.Add(DlcCatalog.SupporterPack.Id);
+        var g = new GameState(SaveData.CreateNew(), dlc);
+        for (int i = 0; i < 25; i++) Assert.True(g.Inventory.TryAdd("pipe_wrench"));
+        dlc.Owned.Clear();
+        g.Entitlements.Refresh();
+        Assert.Equal(25, g.Inventory.CountOf("pipe_wrench"));
+        Assert.False(g.Inventory.TryAdd("medkit"));
+    }
+}
+
+public class AchievementTests
+{
+    [Fact]
+    public void UnlocksOnceAndPersists()
     {
         var g = new GameState(SaveData.CreateNew());
-        Assert.Equal(GrantResult.Granted, g.Purchases.Grant(StoreCatalog.StarterPack, "tx1"));
-        Assert.Equal(GrantResult.AlreadyGranted, g.Purchases.Grant(StoreCatalog.StarterPack, "restore-tx"));
-        Assert.Equal(300, g.Wallet.Cores);
-        Assert.Equal(SaveData.DefaultInventoryCapacity + 10, g.Inventory.Capacity);
-        Assert.True(g.Cosmetics.Owns("suit_scavenger"));
+        Assert.Empty(g.Achievements.Evaluate());
+        g.RegisterKill("raider");
+        Assert.Equal(new List<string> { "ACH_FIRST_RAIDER" }, g.Achievements.Evaluate());
+        Assert.Empty(g.Achievements.Evaluate());
 
         var reloaded = new GameState(InventoryTests.RoundTrip(g.Save));
-        Assert.Equal(SaveData.DefaultInventoryCapacity + 10, reloaded.Inventory.Capacity);
-        Assert.True(reloaded.Purchases.IsEntitled(StoreCatalog.StarterPack));
+        Assert.True(reloaded.Achievements.IsUnlocked("ACH_FIRST_RAIDER"));
     }
 
     [Fact]
-    public void UnknownProductIsRejected()
+    public void ScrapTotalCountsOnlyEarnedScrap()
     {
         var g = new GameState(SaveData.CreateNew());
-        Assert.Equal(GrantResult.UnknownProduct, g.Purchases.Grant("com.other.thing", "tx"));
+        g.EarnScrap(600);
+        g.Wallet.TrySpendScrap(500);
+        g.EarnScrap(400);
+        Assert.Equal(1000, g.Save.lifetime.scrapEarned);
+        Assert.Contains("ACH_SCRAPPER", g.Achievements.Evaluate());
+    }
+}
+
+public class SettingsTests
+{
+    [Fact]
+    public void SanitizeClampsBadValues()
+    {
+        var s = new GameSettings { masterVolume = 3f, sfxVolume = -1f, width = 1920, height = 0,
+            windowMode = (WindowMode)42, bindingOverridesJson = null }.Sanitize();
+        Assert.Equal(1f, s.masterVolume);
+        Assert.Equal(0f, s.sfxVolume);
+        Assert.Equal(0, s.width);
+        Assert.Equal(WindowMode.Borderless, s.windowMode);
+        Assert.Equal("", s.bindingOverridesJson);
     }
 
     [Fact]
-    public void LedgerIsBounded()
+    public void DecibelConversion()
     {
-        var g = new GameState(SaveData.CreateNew());
-        for (int i = 0; i < PurchaseGrantService.LedgerSize + 50; i++)
-            g.Purchases.Grant(StoreCatalog.CoresSmall, "tx" + i);
-        Assert.Equal(PurchaseGrantService.LedgerSize, g.Save.processedTransactions.Count);
+        Assert.Equal(-80f, GameSettings.ToDecibels(0f));
+        Assert.Equal(0f, GameSettings.ToDecibels(1f), 3);
+        Assert.Equal(-6.02f, GameSettings.ToDecibels(0.5f), 2);
     }
 }
 
@@ -182,11 +240,11 @@ public class CosmeticTests
     {
         var g = new GameState(SaveData.CreateNew());
         Assert.False(g.Cosmetics.TryBuy("suit_neon"));     // no cores
-        g.Wallet.AddCores(500);
+        g.Wallet.AddCores(50);
         Assert.True(g.Cosmetics.TryBuy("suit_neon"));
-        Assert.Equal(100, g.Wallet.Cores);
+        Assert.Equal(10, g.Wallet.Cores);
         Assert.False(g.Cosmetics.TryBuy("suit_neon"));     // already owned
-        Assert.False(g.Cosmetics.TryBuy("suit_vanguard")); // pack-only
+        Assert.False(g.Cosmetics.TryBuy("suit_vanguard")); // DLC-only
         Assert.True(g.Cosmetics.TryWear("suit_neon"));
         Assert.Equal("suit_neon", g.Save.activeSuit);
     }
@@ -205,6 +263,7 @@ public class QuestTests
         Assert.True(g.ClaimQuest("q_raiders"));
         Assert.False(g.ClaimQuest("q_raiders"));
         Assert.Equal(60, g.Wallet.Scrap);
+        Assert.Equal(10, g.Wallet.Cores);
         Assert.Equal(2, g.Save.progress.level); // 120 XP > 100 needed
     }
 }

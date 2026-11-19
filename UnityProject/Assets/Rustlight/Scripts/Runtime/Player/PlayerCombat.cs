@@ -1,68 +1,93 @@
 using Rustlight.Core.Combat;
 using Rustlight.Runtime.Combat;
+using Rustlight.Runtime.Input;
 using Rustlight.Runtime.Services;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 namespace Rustlight.Runtime.Player
 {
     /// <summary>
-    /// Attack button with soft auto-aim: hits the nearest living enemy in range and turns to face it.
-    /// Bound to Space / gamepad South; on phones add an "On-Screen Button" with Control Path &lt;Gamepad&gt;/buttonSouth.
+    /// Melee attack on <see cref="GameInput.Attack"/>. With mouse and keyboard the swing goes toward the
+    /// cursor and hits the enemy nearest to it inside a cone; with a gamepad it auto-targets the nearest enemy.
     /// </summary>
     [RequireComponent(typeof(PlayerController))]
     public sealed class PlayerCombat : MonoBehaviour
     {
         [SerializeField] private float attackRange = 2.5f;
+        [SerializeField, Range(10f, 180f)] private float aimConeDegrees = 70f;
         [SerializeField] private float cooldown = 0.45f;
         [SerializeField] private float skillPower = 1f;
         [SerializeField] private LayerMask enemyLayers = ~0;
 
         private readonly Collider[] _hits = new Collider[16];
         private readonly IRandom _random = new SystemRandom();
-        private InputAction _attack;
+        private Camera _camera;
         private float _nextAttackTime;
 
-        private void Awake()
+        private void Awake() => _camera = Camera.main;
+        private void OnEnable() => GameInput.Attack.performed += OnAttack;
+        private void OnDisable() => GameInput.Attack.performed -= OnAttack;
+
+        private void OnAttack(InputAction.CallbackContext ctx)
         {
-            _attack = new InputAction("Attack", InputActionType.Button);
-            _attack.AddBinding("<Keyboard>/space");
-            _attack.AddBinding("<Gamepad>/buttonSouth");
-            _attack.performed += _ => TryAttack();
+            bool fromMouse = ctx.control.device is Mouse;
+            if (fromMouse && EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
+            bool aimAtCursor = !(ctx.control.device is Gamepad) && _camera != null;
+            TryAttack(aimAtCursor);
         }
 
-        private void OnEnable() => _attack.Enable();
-        private void OnDisable() => _attack.Disable();
-        private void OnDestroy() => _attack.Dispose();
-
-        /// <summary>Also callable from a UI Button's OnClick.</summary>
-        public void TryAttack()
+        /// <summary>Swings if off cooldown; returns true if an enemy was hit.</summary>
+        public bool TryAttack(bool aimAtCursor)
         {
-            if (Time.time < _nextAttackTime) return;
-            var target = FindNearestEnemy();
-            if (target == null) return;
-
+            if (Time.time < _nextAttackTime || GetComponent<PlayerController>().Health.IsDead) return false;
             _nextAttackTime = Time.time + cooldown;
-            Vector3 look = target.transform.position - transform.position;
-            look.y = 0f;
-            if (look.sqrMagnitude > 0.001f) transform.rotation = Quaternion.LookRotation(look);
 
+            Vector3? aim = aimAtCursor ? CursorDirection() : null;
+            if (aim.HasValue) transform.rotation = Quaternion.LookRotation(aim.Value);
+
+            var target = FindTarget(aim);
+            if (target == null) return false;
+
+            if (!aim.HasValue)
+            {
+                Vector3 look = target.transform.position - transform.position;
+                look.y = 0f;
+                if (look.sqrMagnitude > 0.001f) transform.rotation = Quaternion.LookRotation(look);
+            }
             var stats = GameServices.Instance.State.PlayerStats;
             target.Health.TakeHit(DamageCalculator.Compute(stats, target.Health.Stats, skillPower, _random));
+            return true;
         }
 
-        private Enemy FindNearestEnemy()
+        /// <summary>Flat direction from the player to where the cursor meets the ground plane.</summary>
+        private Vector3? CursorDirection()
+        {
+            var ray = _camera.ScreenPointToRay(GameInput.Point.ReadValue<Vector2>());
+            var plane = new Plane(Vector3.up, transform.position);
+            if (!plane.Raycast(ray, out float enter)) return null;
+            Vector3 dir = ray.GetPoint(enter) - transform.position;
+            dir.y = 0f;
+            return dir.sqrMagnitude > 0.01f ? dir.normalized : (Vector3?)null;
+        }
+
+        /// <summary>Nearest living enemy in range; with an aim direction, only those inside the cone.</summary>
+        private Enemy FindTarget(Vector3? aim)
         {
             int count = Physics.OverlapSphereNonAlloc(transform.position, attackRange, _hits, enemyLayers,
                 QueryTriggerInteraction.Ignore);
             Enemy best = null;
-            float bestDistance = float.MaxValue;
+            float bestScore = float.MaxValue;
             for (int i = 0; i < count; i++)
             {
                 var enemy = _hits[i].GetComponentInParent<Enemy>();
                 if (enemy == null || enemy.Health.IsDead) continue;
-                float d = (enemy.transform.position - transform.position).sqrMagnitude;
-                if (d < bestDistance) { bestDistance = d; best = enemy; }
+                Vector3 to = enemy.transform.position - transform.position;
+                to.y = 0f;
+                if (aim.HasValue && Vector3.Angle(aim.Value, to) > aimConeDegrees * 0.5f) continue;
+                float score = to.sqrMagnitude;
+                if (score < bestScore) { bestScore = score; best = enemy; }
             }
             return best;
         }

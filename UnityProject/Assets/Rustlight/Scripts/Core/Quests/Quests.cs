@@ -15,12 +15,15 @@ namespace Rustlight.Core.Quests
         public int Required { get; }
         public int RewardXp { get; }
         public int RewardScrap { get; }
+        /// <summary>Cores are rare and only earned in play: quests are their main source.</summary>
+        public int RewardCores { get; }
 
         public QuestDefinition(string id, string title, ObjectiveType objective, string targetId,
-            int required, int rewardXp, int rewardScrap)
+            int required, int rewardXp, int rewardScrap, int rewardCores = 0)
         {
             Id = id; Title = title; Objective = objective; TargetId = targetId;
             Required = required < 1 ? 1 : required; RewardXp = rewardXp; RewardScrap = rewardScrap;
+            RewardCores = rewardCores;
         }
     }
 

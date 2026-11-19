@@ -1,6 +1,5 @@
 using System;
 using Rustlight.Core.Combat;
-using Rustlight.Core.Quests;
 using Rustlight.Core.Stats;
 using Rustlight.Runtime.Player;
 using Rustlight.Runtime.Services;
@@ -98,10 +97,10 @@ namespace Rustlight.Runtime.Combat
         {
             var state = GameServices.Instance.State;
             state.AddXp(xpReward);
-            state.Wallet.AddScrap(scrapReward);
+            state.EarnScrap(scrapReward);
             foreach (var entry in loot)
                 if (_random.Next01() < entry.chance) state.Inventory.TryAdd(entry.itemId);
-            state.Quests.Report(ObjectiveType.Kill, questTargetId);
+            state.RegisterKill(questTargetId);
 
             if (_agent.isOnNavMesh) _agent.isStopped = true;
             foreach (var c in GetComponentsInChildren<Collider>()) c.enabled = false;

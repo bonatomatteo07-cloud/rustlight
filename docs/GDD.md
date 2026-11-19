@@ -1,16 +1,17 @@
 # Rustlight: documento di design (GDD)
 
-> "Rustlight" è un titolo provvisorio: prima di usarlo verifica che sia libero sull'App Store e come marchio.
+> "Rustlight" è un titolo provvisorio: prima di usarlo verifica che sia libero su Steam e come marchio.
 
 ## In una frase
 Un recuperatore e il suo drone esplorano le rovine di un mondo spento per riaccendere il generatore
-del loro Bunker. È un'avventura/RPG d'azione in 3D, pensata per partite da 5–15 minuti su iPhone.
+del loro Bunker. È un'avventura/RPG d'azione in 3D per PC (Steam e Steam Deck), venduta a prezzo
+pieno, con circa 10 ore di gioco nel primo capitolo.
 
 ## Pilastri
 1. **Esplorare paga**: ogni zona nasconde rottami, equipaggiamento e scorciatoie.
-2. **Combattimento semplice e leggibile**: una mano sullo stick e un pulsante d'attacco con mira assistita. Le abilità arriveranno più avanti.
+2. **Combattimento leggibile**: con mouse e tastiera si attacca verso il cursore, con il gamepad c'è la mira assistita. Le abilità arriveranno più avanti.
 3. **Progressione visibile**: livello, equipaggiamento e Bunker crescono in modo chiaro.
-4. **Equo verso chi non paga**: con soldi veri si comprano solo cosmetici, comodità e la valuta premium. Niente statistiche in vendita e niente loot box.
+4. **Si paga una volta**: il gioco base è completo. I DLC aggiungono capitoli e cosmetici, mai statistiche. Niente microtransazioni e niente loot box.
 
 ## Ciclo di gioco
 - **Momento per momento**: muoviti, avvicinati, attacca, raccogli il bottino.
@@ -19,7 +20,7 @@ del loro Bunker. È un'avventura/RPG d'azione in 3D, pensata per partite da 5–
 
 ## Ambientazione e stile
 - Mondo post-apocalittico sci-fi: deserti di ruggine, città sommerse dalla sabbia, impianti radioattivi.
-- Stile **low-poly stilizzato**, con palette calda (ruggine, ocra) e accenti freddi (neon ciano) per il loot e l'interfaccia. Regge bene su mobile e richiede poca arte.
+- Stile **low-poly stilizzato**, con palette calda (ruggine, ocra) e accenti freddi (neon ciano) per il loot e l'interfaccia. Gira bene anche su Steam Deck e richiede poca arte.
 - Visuale a tre quarti dall'alto (`FollowCamera`).
 
 ## Contenuti del primo capitolo (MVP)
@@ -41,16 +42,19 @@ del loro Bunker. È un'avventura/RPG d'azione in 3D, pensata per partite da 5–
 | Danni | `Combat/DamageCalculator.cs` | attacco × 100/(100+armatura); critico ×1,5; minimo 1 |
 | Inventario | `Items/Inventory.cs` | 20 slot, oggetti impilabili, aggiunte "tutto o niente" |
 | Equipaggiamento | `Items/Equipment.cs` | scambio sicuro e statistiche sempre allineate |
-| Valute | `Economy/Wallet.cs` | Rottami (si guadagnano giocando) e Nuclei (premium) |
+| Valute | `Economy/Wallet.cs` | Rottami (comuni) e Nuclei (rari, dalle missioni): entrambi si guadagnano solo giocando |
 | Cosmetici | `Economy/CosmeticShop.cs` | tute e skin del drone, solo estetici |
+| DLC | `Dlc/Dlc.cs` | quello che un DLC sblocca si ricalcola dal possesso su Steam, non viene salvato |
+| Obiettivi | `Achievements/Achievements.cs` | registrati nel salvataggio e inviati a Steam appena possibile |
+| Opzioni | `Settings/GameSettings.cs` | risoluzione, finestra, V-Sync, qualità, volumi, tasti |
 | Missioni | `Quests/Quests.cs` | ricompense riscattabili una sola volta |
 | Salvataggi | `Save/SaveData.cs` | versionati e con migrazione; scrittura atomica con backup (`SaveService`) |
-| Acquisti | `Monetization/*` | ogni acquisto viene accreditato una sola volta, anche al ripristino |
 
-## Monetizzazione
-Vedi [monetization.md](monetization.md).
+## Modello di business
+Vedi [steam.md](steam.md).
 
 ## Prossimi passi di design
 - Abilità attive del drone (scudo, impulso EMP) con ricarica.
 - Potenziamenti del Bunker che consumano Rottami: la principale fonte di spesa della valuta gratuita.
-- Abbonamento "Pass della Stagione" (solo dopo il lancio, se i dati lo giustificano).
+- Capitolo II "La Città Sommersa" come primo DLC di contenuto.
+- Porting su iPhone in futuro: la logica Core è già indipendente dalla piattaforma.

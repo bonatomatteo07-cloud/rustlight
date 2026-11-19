@@ -41,17 +41,18 @@ namespace Rustlight.Core.Content
             new CosmeticDefinition("suit_default", "Tuta da recuperatore", CosmeticKind.Suit, 0),
             new CosmeticDefinition("suit_scavenger", "Predone delle dune", CosmeticKind.Suit, 0),
             new CosmeticDefinition("suit_vanguard", "Avanguardia", CosmeticKind.Suit, 0),
-            new CosmeticDefinition("suit_neon", "Neon del vecchio mondo", CosmeticKind.Suit, 400),
+            new CosmeticDefinition("suit_diver", "Palombaro della Città Sommersa", CosmeticKind.Suit, 0),
+            new CosmeticDefinition("suit_neon", "Neon del vecchio mondo", CosmeticKind.Suit, 40),
             new CosmeticDefinition("drone_default", "Drone standard", CosmeticKind.Drone, 0),
             new CosmeticDefinition("drone_halo", "Drone Aureola", CosmeticKind.Drone, 0),
-            new CosmeticDefinition("drone_rust", "Drone Ruggine", CosmeticKind.Drone, 250),
+            new CosmeticDefinition("drone_rust", "Drone Ruggine", CosmeticKind.Drone, 25),
         };
 
         public static IEnumerable<QuestDefinition> Quests() => new[]
         {
             new QuestDefinition("q_first_steps", "Primi passi fuori dal Bunker", ObjectiveType.Reach, "zone_scrapyard", 1, 50, 20),
-            new QuestDefinition("q_raiders", "Ripulire il deposito", ObjectiveType.Kill, "raider", 5, 120, 60),
-            new QuestDefinition("q_scrap", "Materiale per il generatore", ObjectiveType.Collect, "scrap_metal", 20, 80, 40),
+            new QuestDefinition("q_raiders", "Ripulire il deposito", ObjectiveType.Kill, "raider", 5, 120, 60, rewardCores: 10),
+            new QuestDefinition("q_scrap", "Materiale per il generatore", ObjectiveType.Collect, "scrap_metal", 20, 80, 40, rewardCores: 5),
         };
     }
 }

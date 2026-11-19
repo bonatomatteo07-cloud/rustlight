@@ -2,14 +2,14 @@ using Rustlight.Core.Stats;
 using Rustlight.Runtime.Combat;
 using Rustlight.Runtime.Services;
 using UnityEngine;
-using UnityEngine.InputSystem;
+using Rustlight.Runtime.Input;
 
 namespace Rustlight.Runtime.Player
 {
     /// <summary>
-    /// Camera-relative movement with a CharacterController. Reads WASD and the gamepad left stick;
-    /// on phones add an Input System "On-Screen Stick" with Control Path &lt;Gamepad&gt;/leftStick.
-    /// Speed comes from the MoveSpeed stat, so gear like servo boots applies automatically.
+    /// Camera-relative movement with a CharacterController, driven by <see cref="GameInput.Move"/>
+    /// (WASD or the gamepad left stick, both rebindable). Speed comes from the MoveSpeed stat,
+    /// so gear like servo boots applies automatically.
     /// </summary>
     [RequireComponent(typeof(CharacterController), typeof(Health))]
     public sealed class PlayerController : MonoBehaviour
@@ -22,7 +22,6 @@ namespace Rustlight.Runtime.Player
         [SerializeField] private Transform respawnPoint;
 
         private CharacterController _controller;
-        private InputAction _move;
         private float _verticalVelocity;
 
         public Health Health { get; private set; }
@@ -36,23 +35,11 @@ namespace Rustlight.Runtime.Player
             Health.Died += Respawn;
             GameServices.Instance.State.LeveledUp += OnLeveledUp;
 
-            _move = new InputAction("Move", InputActionType.Value);
-            _move.AddCompositeBinding("2DVector")
-                .With("Up", "<Keyboard>/w")
-                .With("Down", "<Keyboard>/s")
-                .With("Left", "<Keyboard>/a")
-                .With("Right", "<Keyboard>/d");
-            _move.AddBinding("<Gamepad>/leftStick");
-
             if (cameraTransform == null && Camera.main != null) cameraTransform = Camera.main.transform;
         }
 
-        private void OnEnable() => _move.Enable();
-        private void OnDisable() => _move.Disable();
-
         private void OnDestroy()
         {
-            _move.Dispose();
             if (GameServices.Instance != null) GameServices.Instance.State.LeveledUp -= OnLeveledUp;
             if (Instance == this) Instance = null;
         }
@@ -63,7 +50,7 @@ namespace Rustlight.Runtime.Player
         {
             if (Health.IsDead) return;
 
-            Vector2 input = Vector2.ClampMagnitude(_move.ReadValue<Vector2>(), 1f);
+            Vector2 input = Vector2.ClampMagnitude(GameInput.Move.ReadValue<Vector2>(), 1f);
             Vector3 direction = CameraRelative(input);
             float speed = GameServices.Instance.State.PlayerStats.Get(StatType.MoveSpeed);
 
