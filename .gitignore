@@ -26,3 +26,7 @@ tests/**/obj/
 # OS
 .DS_Store
 Thumbs.db
+
+# Python cache (skill scripts)
+__pycache__/
+*.pyc
