@@ -13,6 +13,8 @@ UnityProject/Assets/Rustlight/Scripts/
   Runtime/   MonoBehaviour: Steam (Steamworks.NET), salvataggi, input rimappabile, giocatore, nemici, UI
 tests/       test xUnit della logica Core (dotnet test)
 docs/        design e guide
+.claude/     configurazione Claude Code: agente csharp-reviewer, skill csharp-testing e dotnet-patterns,
+             regole C# (adattati da ECC per Unity 6 / C# 9, vedi .claude/THIRD_PARTY_NOTICES.md)
 ```
 
 ## Stato
